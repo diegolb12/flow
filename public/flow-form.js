@@ -3,6 +3,7 @@
       constructor() { super(); this.attachShadow({ mode: 'open' }); this.root = document.createElement('div'); this.shadowRoot.appendChild(this.root); }
       connectedCallback() {
         const apiBase = this.getAttribute('api-base') || '';
+        const staticBase = new URL(apiBase).origin || '';
         const amountAttr = this.getAttribute('amount');
         const amount = amountAttr ? Number(amountAttr) : 1000;
         const subject = this.getAttribute('subject') || 'Orden Web';
@@ -81,9 +82,16 @@
         comunaSelect.name = 'comuna'; comunaSelect.required = false; comunaSelect.innerHTML = `<option value="">Selecciona</option>`; comunaInput.replaceWith(comunaSelect);
         let comunasByRegion = {};
         async function loadComunas() {
-          try { const res = await fetch('/comunas.json', { cache: 'force-cache' }); comunasByRegion = await res.json(); }
-          catch { comunasByRegion = { 'Metropolitana de Santiago': ['Santiago','Providencia','Las Condes'], 'Valparaíso': ['Valparaíso','Viña del Mar'] }; }
-        }
+            try {
+              const res = await fetch(`${staticBase}/comunas.json`, { cache: 'force-cache' });
+              comunasByRegion = await res.json();
+            } catch (e) {
+              comunasByRegion = {
+                'Metropolitana de Santiago': ['Santiago','Providencia','Las Condes'],
+                'Valparaíso': ['Valparaíso','Viña del Mar']
+              };
+            }
+          }
         function fillComunas(region) {
           const list = comunasByRegion[region] || []; comunaSelect.innerHTML = `<option value="">Selecciona</option>` + list.map(c => `<option>${c}</option>`).join('');
         }
