@@ -1,6 +1,6 @@
-// /api/dev/approve.js
 import { setCors, handleOptions } from '../../src/lib/cors.js';
 import { query } from '../../src/lib/db.js';
+import { pushToHubspot } from '../../src/lib/hubspot.js';
 
 export default async function handler(req, res) {
   setCors(res, req.headers.origin);
