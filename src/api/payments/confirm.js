@@ -1,4 +1,5 @@
 import { getStatusAndNormalize } from '../../lib/flowStatus.js';
+import { setCors, handleOptions } from '../../lib/cors.js';
 
 function allowCors(res, origin = '') {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -7,9 +8,10 @@ function allowCors(res, origin = '') {
 }
 
 export default async function handler(req, res) {
-  allowCors(res, req.headers.origin || '');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+    setCors(res, req.headers.origin);
+    if (handleOptions(req, res)) return;
+  
+    if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   const token = req.query?.token;
   if (!token) return res.status(400).json({ error: 'token required' });

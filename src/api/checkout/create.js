@@ -1,6 +1,7 @@
 // /api/checkout/create.js
 import { flowPaymentCreate } from '../../lib/flowClient.js';
 import { upsertOrderByReference, setOrderRedirected } from '../../lib/db.js';
+import { setCors, handleOptions } from '../../lib/cors.js';
 
 function allowCors(res, origin = '') {
   // Si quieres whitelist: reemplaza '*' por tu dominio Webflow (p. ej. https://tu-site.webflow.io)
@@ -10,9 +11,9 @@ function allowCors(res, origin = '') {
 }
 
 export default async function handler(req, res) {
-  allowCors(res, req.headers.origin || '');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    setCors(res, req.headers.origin);
+    if (handleOptions(req, res)) return;
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
     const { email, optional } = req.body || {};
