@@ -1,12 +1,13 @@
 // /api/dev/approve.js
 import { setCors, handleOptions } from '../../src/lib/cors.js';
+import { query } from '../../src/lib/db.js';
+import { pushToHubspot } from '../../src/lib/hubspot.js';
 
 export default async function handler(req, res) {
   setCors(res, req.headers.origin);
   if (handleOptions(req, res)) return;
 
   try {
-    // Seguridad básica: requiere token admin por query o header
     const admin =
       req.headers['x-admin-token'] ||
       req.query?.admin ||
@@ -14,7 +15,6 @@ export default async function handler(req, res) {
     if (admin !== process.env.DEV_ADMIN_TOKEN) {
       return res.status(401).json({ error: 'unauthorized' });
     }
-
     if (req.method !== 'POST') {
       return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -22,11 +22,8 @@ export default async function handler(req, res) {
     const { reference } = req.body || {};
     if (!reference) return res.status(400).json({ error: 'reference required' });
 
-    const { pool } = await import('../../src/lib/db.js');
-    const { pushToHubspot } = await import('../../src/lib/hubspot.js');
-
     // 1) Traer orden
-    const { rows } = await pool.query(
+    const { rows } = await query(
       `SELECT id, reference, email, amount, optional, fields, status
          FROM orders WHERE reference=$1`,
       [reference]
@@ -34,8 +31,8 @@ export default async function handler(req, res) {
     if (rows.length === 0) return res.status(404).json({ error: 'order not found' });
     const order = rows[0];
 
-    // 2) Marcar APPROVED + upsert pago simulado (idempotente simple)
-    await pool.query(
+    // 2) Marcar APPROVED
+    await query(
       `UPDATE orders
           SET status='APPROVED',
               paid_at=NOW(),
@@ -44,14 +41,15 @@ export default async function handler(req, res) {
       [reference]
     );
 
-    await pool.query(
-      `INSERT INTO payments (order_id, provider, provider_tx_id, amount, status, raw_payload)
-         VALUES ($1, 'manual', 'DEV-'||to_char(NOW(),'YYYYMMDDHH24MISS'), $2, 'APPROVED', '{}'::jsonb)
-         ON CONFLICT DO NOTHING`,
+    // 3) Insertar pago simulado (coincide con tu schema: provider_tx_id, raw_payload)
+    await query(
+      `INSERT INTO payments (order_id, provider, provider_tx_id, amount, status, raw_payload, created_at)
+       VALUES ($1, 'manual', 'DEV-'||to_char(NOW(),'YYYYMMDDHH24MISS'), $2, 'APPROVED', '{}'::jsonb, NOW())
+       ON CONFLICT DO NOTHING`,
       [order.id, order.amount]
     );
 
-    // 3) Empuje a HubSpot (solo una vez)
+    // 4) Push a HubSpot (con campos desde optional/fields)
     await pushToHubspot({
       email: order.email,
       name: order.fields?.name || order.optional?.name || '',
