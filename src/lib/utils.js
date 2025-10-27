@@ -1,0 +1,1 @@
+export function isProduction() { return (process.env.FLOW_API_BASE || '').includes('www.flow.cl'); }

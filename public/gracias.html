@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Resultado del pago</title>
+<style>
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;color:#243b53;background:#fff;display:grid;place-items:center;min-height:100vh;margin:0}
+  .card{max-width:560px;background:#fff;border:1px solid #d9e2ec;border-radius:12px;padding:24px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+  h1{margin:0 0 8px}
+  .muted{color:#829ab1}
+  .ok{color:#1f7ae0}.bad{color:#c81e1e}.pending{color:#946200}
+</style>
+<div class="card">
+  <h1 id="title">Procesando…</h1>
+  <p id="desc" class="muted">Consultando estado del pago.</p>
+  <p class="muted"><a href="/">Volver</a></p>
+</div>
+<script>
+(async () => {
+  const qs = new URLSearchParams(location.search);
+  const token = qs.get('token'); const err = qs.get('err');
+  const $ = s => document.querySelector(s);
+  if (err || !token) { $('#title').textContent='Token faltante'; $('#desc').textContent='No pudimos validar tu pago.'; return; }
+  try{
+    const r = await fetch(`/api/payments/confirm?token=${encodeURIComponent(token)}`);
+    const data = await r.json();
+    const title = {APPROVED:'¡Pago aprobado!',REJECTED:'Pago rechazado',PENDING:'Pago pendiente',VOIDED:'Pago anulado'}[data.status] || 'Estado';
+    const cls = {APPROVED:'ok',REJECTED:'bad',PENDING:'pending',VOIDED:'bad'}[data.status] || '';
+    $('#title').textContent = title; $('#title').className = cls;
+    $('#desc').textContent = `Referencia: ${data.providerOrderId || '—'} • Monto: ${data.amount ?? '—'}`;
+  }catch(e){ $('#title').textContent='Error'; $('#desc').textContent='No pudimos consultar el estado.'; }
+})();
+</script>
+</html> 

@@ -1,0 +1,14 @@
+{
+    "name": "flow",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "engines": { "node": ">=18" },
+    "scripts": {
+    "dev": "vercel dev",
+    "db:migrate": "psql $DATABASE_URL -f db/schema.sql"
+    },
+    "dependencies": {
+    "pg": "^8.11.3"
+    }
+}
