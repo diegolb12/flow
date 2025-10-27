@@ -1,13 +1,10 @@
 {
     "version": 2,
     "functions": {
-      "src/api/**/*.js": {
+      "api/**/*.js": {
         "runtime": "vercel-nodejs@20.0.0",
         "memory": 1024
       }
-    },
-    "routes": [
-      { "src": "/api/(.*)", "dest": "src/api/$1" }
-    ]
+    }
   }
   
