@@ -1,14 +1,25 @@
+// /lib/flowStatus.js
 import { flowGetStatus } from './flowClient.js';
-export async function getStatusAndNormalize(token) {
-  const data = await flowGetStatus(token);
-  const map = { 1: 'PENDING', 2: 'APPROVED', 3: 'REJECTED', 4: 'VOIDED' };
+
+const MAP = {
+  1: 'PENDING',   // pendiente
+  2: 'APPROVED',  // pagada
+  3: 'REJECTED',  // rechazada
+  4: 'VOIDED'     // anulada
+};
+
+export function normalizeFlow(data) {
+  const status = MAP[data?.status] || 'UNKNOWN';
   return {
-    token,
-    provider: 'flow',
-    providerOrderId: String(data.flowOrder ?? data.flowTrxId ?? ''),
-    status: map[data.status],
-    amount: Number(data.amount ?? 0),
-    authCode: data.paymentData?.authorizationCode ?? null,
-    raw: data,
+    status,
+    amount: Number(data?.amount ?? 0),
+    providerOrderId: String(data?.flowOrder ?? data?.commerceOrder ?? ''),
+    authCode: data?.authorizationCode ?? '',
+    raw: data
   };
+}
+
+export async function getStatusAndNormalize(token) {
+  const raw = await flowGetStatus(token);
+  return normalizeFlow(raw);
 }
