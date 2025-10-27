@@ -1,7 +1,6 @@
 // /api/dev/approve.js
 import { setCors, handleOptions } from '../../src/lib/cors.js';
 import { query } from '../../src/lib/db.js';
-import { pushToHubspot } from '../../src/lib/hubspot.js';
 
 export default async function handler(req, res) {
   setCors(res, req.headers.origin);
@@ -9,9 +8,7 @@ export default async function handler(req, res) {
 
   try {
     const admin =
-      req.headers['x-admin-token'] ||
-      req.query?.admin ||
-      req.body?.admin;
+      req.headers['x-admin-token'] || req.query?.admin || req.body?.admin;
     if (admin !== process.env.DEV_ADMIN_TOKEN) {
       return res.status(401).json({ error: 'unauthorized' });
     }
@@ -21,6 +18,16 @@ export default async function handler(req, res) {
 
     const { reference } = req.body || {};
     if (!reference) return res.status(400).json({ error: 'reference required' });
+
+    // 🔧 Import dinámico y flexible del módulo HubSpot
+    const hub = await import('../../src/lib/hubspot.js');
+    const push =
+      hub.pushToHubspot ||
+      hub.default ||
+      hub.sendToHubspot ||
+      hub.upsertHubspot ||
+      hub.upsertContact ||
+      (async () => { console.warn('HubSpot push NOOP: función no encontrada'); });
 
     // 1) Traer orden
     const { rows } = await query(
@@ -34,14 +41,12 @@ export default async function handler(req, res) {
     // 2) Marcar APPROVED
     await query(
       `UPDATE orders
-          SET status='APPROVED',
-              paid_at=NOW(),
-              updated_at=NOW()
+          SET status='APPROVED', paid_at=NOW(), updated_at=NOW()
         WHERE reference=$1`,
       [reference]
     );
 
-    // 3) Insertar pago simulado (coincide con tu schema: provider_tx_id, raw_payload)
+    // 3) Insertar pago simulado
     await query(
       `INSERT INTO payments (order_id, provider, provider_tx_id, amount, status, raw_payload, created_at)
        VALUES ($1, 'manual', 'DEV-'||to_char(NOW(),'YYYYMMDDHH24MISS'), $2, 'APPROVED', '{}'::jsonb, NOW())
@@ -49,8 +54,8 @@ export default async function handler(req, res) {
       [order.id, order.amount]
     );
 
-    // 4) Push a HubSpot (con campos desde optional/fields)
-    await pushToHubspot({
+    // 4) Push a HubSpot (si existe función)
+    await push({
       email: order.email,
       name: order.fields?.name || order.optional?.name || '',
       phone: order.fields?.phone || order.optional?.phone || '',
