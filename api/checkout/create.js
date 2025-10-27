@@ -1,5 +1,5 @@
 // /api/checkout/create.js
-import { setCors, handleOptions } from '../src/lib/cors.js';
+import { setCors, handleOptions } from '../../src/lib/cors.js';
 
 export default async function handler(req, res) {
   setCors(res, req.headers.origin);
@@ -11,8 +11,8 @@ export default async function handler(req, res) {
 
   try {
     // imports que podrían romper → aquí adentro
-    const { flowPaymentCreate } = await import('../src/lib/flowClient.js');
-    const { upsertOrderByReference, setOrderRedirected } = await import('../src/lib/db.js');
+    const { flowPaymentCreate } = await import('../../src/lib/flowClient.js');
+    const { upsertOrderByReference, setOrderRedirected } = await import('../../src/lib/db.js');
 
     const { email, optional } = req.body || {};
     if (!email) return res.status(400).json({ error: 'email required' });

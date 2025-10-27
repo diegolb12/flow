@@ -1,5 +1,5 @@
 import { getStatusAndNormalize } from '../../lib/flowStatus.js';
-import { setCors, handleOptions } from '../../lib/cors.js';
+import { setCors, handleOptions } from '../../src/lib/cors.js';
 
 function allowCors(res, origin = '') {
   res.setHeader('Access-Control-Allow-Origin', '*');
