@@ -1,12 +1,10 @@
-// /src/lib/flowClient.js
 import { signParams } from './flowSign.js';
 import { URLSearchParams } from 'url';
 
-const BASE   = process.env.FLOW_API_BASE;   // p.ej. https://sandbox.flow.cl/api
+const BASE   = process.env.FLOW_API_BASE;
 const API_KEY= process.env.FLOW_API_KEY;
 const SECRET = process.env.FLOW_SECRET;
 
-// helper: elimina claves con '', null o undefined
 function clean(obj) {
   const out = {};
   for (const [k, v] of Object.entries(obj)) {
@@ -26,14 +24,13 @@ export async function flowPaymentCreate(payload) {
     apiKey: API_KEY,
     commerceOrder: String(payload.commerceOrder),
     subject: String(payload.subject ?? ''),
-    amount: Number(payload.amount),                 // asegura número
+    amount: Number(payload.amount),
     email: String(payload.email ?? ''),
     urlConfirmation: String(payload.urlConfirmation),
     urlReturn: String(payload.urlReturn),
     optional: payload.optional ? JSON.stringify(payload.optional) : undefined
   });
 
-  // solo incluye paymentMethod si viene definido (no envíes "")
   if (payload.paymentMethod != null) {
     baseParams.paymentMethod = String(payload.paymentMethod);
   }
@@ -47,7 +44,7 @@ export async function flowPaymentCreate(payload) {
     body
   });
 
-  const text = await r.text();  // siempre leemos el cuerpo
+  const text = await r.text();
 
   if (!r.ok) {
     console.error('FLOW CREATE ERROR', r.status, text);
@@ -62,7 +59,7 @@ export async function flowPaymentCreate(payload) {
     throw new Error('flow create malformed response');
   }
 
-  return data; // { token, url, flowOrder? }
+  return data;
 }
 
 export async function flowGetStatus(token) {

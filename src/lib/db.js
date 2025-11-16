@@ -1,4 +1,3 @@
-// /lib/db.js
 import pg from 'pg';
 const { Pool } = pg;
 
@@ -14,7 +13,6 @@ export async function query(text, params) {
   finally { client.release(); }
 }
 
-// Guarda/actualiza orden por reference (status inicial = CREATED)
 export async function upsertOrderByReference({ reference, email, amount, optional, fields }) {
   return query(`
     INSERT INTO orders (reference, email, amount, status, fields, created_at)
@@ -25,7 +23,6 @@ export async function upsertOrderByReference({ reference, email, amount, optiona
   `, [reference, email, amount, fields || optional || {}]);
 }
 
-// Guarda token/flowOrder al ser creada la orden en Flow
 export async function setOrderRedirected(reference, token, providerOrderId) {
   return query(`
     UPDATE orders SET token=$2, provider_order_id=$3, status='REDIRECTED', updated_at=NOW()
@@ -33,7 +30,6 @@ export async function setOrderRedirected(reference, token, providerOrderId) {
   `, [reference, token, providerOrderId || null]);
 }
 
-// Idempotente: (provider, provider_order_id) único
 export async function insertPaymentOnce(provider, providerOrderId, { orderId, amount, authCode, status, raw }) {
   return query(`
     INSERT INTO payments (provider, provider_order_id, order_id, amount, auth_code, status, raw, created_at)
@@ -42,7 +38,6 @@ export async function insertPaymentOnce(provider, providerOrderId, { orderId, am
   `, [provider, providerOrderId, orderId, amount, authCode, status, raw]);
 }
 
-// Actualiza estado/amount/provider_order_id por token
 export async function updateOrderStatusByToken(token, status, rawStatus, amount, providerOrderId) {
   return query(`
     UPDATE orders

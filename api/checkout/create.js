@@ -1,19 +1,16 @@
-// /api/checkout/create.js
 import { flowPaymentCreate } from '../../src/lib/flowClient.js';
 import { upsertOrderByReference, setOrderRedirected } from '../../src/lib/db.js';
 import { setCors, handleOptions } from '../../src/lib/cors.js';
 
-// corta a n chars
 const clip = (s = '', n = 120) => String(s).slice(0, n);
 
-// Solo enviar a Flow 1-2 claves cortas (ej. rut y empresa truncada)
 function buildOptionalForFlow(opt = {}) {
   const rut = opt.rutPersonal || opt.rut || '';
   const empresa = opt.empresa || '';
   const mini = {};
   if (rut) mini.rut = clip(rut, 20);
   if (empresa) mini.emp = clip(empresa, 50);
-  return mini; // => JSON muy pequeño
+  return mini;
 }
 
 export default async function handler(req, res) {
@@ -29,16 +26,14 @@ export default async function handler(req, res) {
     const subject = 'subscripcion';
     const reference = `ORD-${Date.now()}-${Math.floor(Math.random() * 9000)}`;
 
-    // Guardar TODO lo grande en tu BD
     await upsertOrderByReference({
       reference,
       email,
       amount,
-      optional,           // <- aquí guardas el objeto completo
-      fields: optional    // (tu esquema ya tiene jsonb)
+      optional,           
+      fields: optional
     });
 
-    // Solo mandar a Flow un optional pequeño
     const optionalForFlow = buildOptionalForFlow(optional);
 
     const resFlow = await flowPaymentCreate({

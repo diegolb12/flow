@@ -1,11 +1,10 @@
-// /lib/flowStatus.js
 import { flowGetStatus } from './flowClient.js';
 
 const MAP = {
-  1: 'PENDING',   // pendiente
-  2: 'APPROVED',  // pagada
-  3: 'REJECTED',  // rechazada
-  4: 'VOIDED'     // anulada
+  1: 'PENDING',
+  2: 'APPROVED',
+  3: 'REJECTED',
+  4: 'VOIDED'
 };
 
 export function normalizeFlow(data) {

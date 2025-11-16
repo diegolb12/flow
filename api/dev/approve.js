@@ -19,7 +19,6 @@ export default async function handler(req, res) {
     const { reference } = req.body || {};
     if (!reference) return res.status(400).json({ error: 'reference required' });
 
-    // 🔧 Import dinámico y flexible del módulo HubSpot
     const hub = await import('../../src/lib/hubspot.js');
     const push =
       hub.pushToHubspot ||
@@ -29,7 +28,6 @@ export default async function handler(req, res) {
       hub.upsertContact ||
       (async () => { console.warn('HubSpot push NOOP: función no encontrada'); });
 
-    // 1) Traer orden
     const { rows } = await query(
       `SELECT id, reference, email, amount, optional, fields, status
          FROM orders WHERE reference=$1`,
@@ -38,7 +36,6 @@ export default async function handler(req, res) {
     if (rows.length === 0) return res.status(404).json({ error: 'order not found' });
     const order = rows[0];
 
-    // 2) Marcar APPROVED
     await query(
       `UPDATE orders
           SET status='APPROVED', paid_at=NOW(), updated_at=NOW()
@@ -46,7 +43,6 @@ export default async function handler(req, res) {
       [reference]
     );
 
-    // 3) Insertar pago simulado
     await query(
       `INSERT INTO payments (order_id, provider, provider_tx_id, amount, status, raw_payload, created_at)
        VALUES ($1, 'manual', 'DEV-'||to_char(NOW(),'YYYYMMDDHH24MISS'), $2, 'APPROVED', '{}'::jsonb, NOW())
@@ -54,7 +50,6 @@ export default async function handler(req, res) {
       [order.id, order.amount]
     );
 
-    // 4) Push a HubSpot (si existe función)
     await push({
       email: order.email,
       name: order.fields?.name || order.optional?.name || '',

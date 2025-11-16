@@ -1,9 +1,8 @@
-// src/lib/hubspot.js
 const HUBSPOT_BASE = process.env.HUBSPOT_BASE || 'https://api.hubapi.com';
-const HUBSPOT_TOKEN = process.env.HUBSPOT_TOKEN; // App privada: scopes contacts.read + contacts.write
+const HUBSPOT_TOKEN = process.env.HUBSPOT_TOKEN;
 
 if (!HUBSPOT_TOKEN) {
-  console.warn('HUBSPOT_TOKEN no está definido; pushToHubspot hará NOOP.');
+  console.warn('HUBSPOT_TOKEN no está definido; pushToHubspot hara NOOP.');
 }
 
 async function hsFetch(path, opts = {}) {
@@ -58,10 +57,6 @@ async function updateContact(id, { email, name, phone }) {
   });
 }
 
-/**
- * Upsert de contacto por email (sin notas)
- * payload: { email (req), name?, phone? ...otros campos ignorados }
- */
 export async function pushToHubspot(payload) {
   if (!HUBSPOT_TOKEN) {
     console.warn('HubSpot push NOOP: HUBSPOT_TOKEN no definido');
