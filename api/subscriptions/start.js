@@ -1,13 +1,13 @@
 // api/subscriptions/start.js
 import { flowCustomerCreate, flowCustomerRegister } from '../../src/lib/flowClient.js';
-import { db } from '../../src/lib/db.js';
-import { runCors } from '../../src/lib/cors.js'; // ajusta el nombre si es distinto
+import { query } from '../../src/lib/db.js';
+import { runCors } from '../../src/lib/cors.js'; // ajusta el nombre si tu cors se exporta distinto
 
 const BASE_URL = process.env.BASE_URL;           // ej: https://flow-lac-seven.vercel.app
-const CARD_RETURN_PATH = '/api/subscriptions/card-return'; // callback después de registrar tarjeta
+const CARD_RETURN_PATH = '/api/subscriptions/card-return';
 
 export default async function handler(req, res) {
-  await runCors(req, res); // si tu cors se llama distinto, cámbialo
+  await runCors(req, res);
 
   if (req.method !== 'POST') {
     res.status(405).json({ ok: false, error: 'Method not allowed' });
@@ -25,19 +25,25 @@ export default async function handler(req, res) {
       telefono,
       region,
       comuna,
-      planTipo // mensual/anual, etc. opcional
+      empresa,
+      tipoRut,
+      rutPersonal,
+      rutEmpresa,
+      genero,
+      empleados,
+      rubro
     } = body;
 
     if (!rut || !email || !nombre) {
-      res.status(400).json({ ok: false, error: 'Faltan campos obligatorios' });
+      res.status(400).json({ ok: false, error: 'Faltan campos obligatorios (nombre, rut, email)' });
       return;
     }
 
     const fullName = `${nombre} ${apellido ?? ''}`.trim();
-    const externalId = rut; // puedes usar tu propio ID interno si quieres
+    const externalId = rut;
 
-    // 1) ¿Ya existe cliente en tu DB?
-    const existing = await db.query(
+    // 1) ¿Ya existe cliente?
+    const existing = await query(
       'SELECT flow_customer_id FROM flow_customers WHERE external_id = $1 OR email = $2 LIMIT 1',
       [externalId, email]
     );
@@ -49,7 +55,7 @@ export default async function handler(req, res) {
     } else {
       // 2) Crear cliente en Flow
       const created = await flowCustomerCreate({
-        name: fullName,
+        name: fullName || empresa || email,
         email,
         externalId
       });
@@ -62,30 +68,46 @@ export default async function handler(req, res) {
         return;
       }
 
-      // 3) Guardar cliente en tu DB
-      await db.query(
-        `INSERT INTO flow_customers (external_id, flow_customer_id, name, email, phone, region, comuna, created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7, NOW())`,
-        [externalId, flowCustomerId, fullName, email, telefono ?? null, region ?? null, comuna ?? null]
+      // 3) Guardar cliente en DB
+      await query(
+        `INSERT INTO flow_customers
+           (external_id, flow_customer_id, name, email, phone, region, comuna,
+            empresa, tipo_rut, rut_personal, rut_empresa, genero, empleados, rubro,
+            created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW())`,
+        [
+          externalId,
+          flowCustomerId,
+          fullName || null,
+          email,
+          telefono ?? null,
+          region ?? null,
+          comuna ?? null,
+          empresa ?? null,
+          tipoRut ?? null,
+          rutPersonal ?? null,
+          rutEmpresa ?? null,
+          genero ?? null,
+          empleados ?? null,
+          rubro ?? null
+        ]
       );
     }
 
-    // 4) Solicitar registro de tarjeta
+    // 4) Registro de tarjeta
     const urlReturn = `${BASE_URL}${CARD_RETURN_PATH}`;
     const reg = await flowCustomerRegister({
       customerId: flowCustomerId,
       urlReturn
     });
 
-    // reg debería tener { url, token }
     if (!reg.url || !reg.token) {
       console.error('FLOW CUSTOMER REGISTER MALFORMED', reg);
       res.status(500).json({ ok: false, error: 'Error al iniciar registro de tarjeta en Flow' });
       return;
     }
 
-    // Puedes guardar el token como “pendiente” si quieres trazar el flujo
-    await db.query(
+    await query(
       `INSERT INTO flow_customer_register_logs (flow_customer_id, token, created_at)
        VALUES ($1,$2,NOW())`,
       [flowCustomerId, reg.token]

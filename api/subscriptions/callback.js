@@ -1,9 +1,8 @@
 // api/subscriptions/callback.js
 import { signParams } from '../../src/lib/flowSign.js';
-import { db } from '../../src/lib/db.js';
+import { query } from '../../src/lib/db.js';
 import { runCors } from '../../src/lib/cors.js';
 
-const API_KEY = process.env.FLOW_API_KEY;
 const SECRET  = process.env.FLOW_SECRET;
 
 export default async function handler(req, res) {
@@ -15,15 +14,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Flow suele mandar x-www-form-urlencoded
     const data = typeof req.body === 'string'
       ? Object.fromEntries(new URLSearchParams(req.body))
       : req.body;
 
-    // 1) separar firma
     const { s, ...rest } = data;
 
-    // 2) validar firma
     const expected = signParams(rest, SECRET);
     if (!s || s !== expected) {
       console.error('FLOW SUBS CALLBACK FIRMA INVÁLIDA', { received: s, expected });
@@ -31,19 +27,17 @@ export default async function handler(req, res) {
       return;
     }
 
-    // 3) leer campos relevantes (ajusta según payload real)
     const subscriptionId =
       rest.subscriptionId || rest.subscription_id || null;
     const invoiceId =
       rest.invoiceId || rest.invoice_id || null;
-    const status = rest.status ?? null; // PAID, FAILED, etc.
+    const status = rest.status ?? null;
     const amount = rest.amount ? Number(rest.amount) : null;
 
-    // 4) guardar en DB
     if (invoiceId) {
-      await db.query(
+      await query(
         `INSERT INTO flow_invoices
-         (invoice_id, flow_subscription_id, status, amount, raw_payload, created_at)
+           (invoice_id, flow_subscription_id, status, amount, raw_payload, created_at)
          VALUES ($1,$2,$3,$4,$5,NOW())
          ON CONFLICT (invoice_id)
          DO UPDATE SET status = EXCLUDED.status,
@@ -54,9 +48,8 @@ export default async function handler(req, res) {
       );
     }
 
-    // 5) actualizar estado de la suscripción (si aplica)
     if (subscriptionId) {
-      await db.query(
+      await query(
         `UPDATE flow_subscriptions
          SET status = $1,
              updated_at = NOW()
@@ -64,10 +57,6 @@ export default async function handler(req, res) {
         [status, subscriptionId]
       );
     }
-
-    // Aquí podrías también:
-    //  - marcar al socio como "activo / moroso"
-    //  - llamar a HubSpot para actualizar el contacto
 
     res.status(200).json({ ok: true });
   } catch (err) {
