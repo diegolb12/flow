@@ -1,18 +1,21 @@
 // api/subscriptions/start.js
 import { flowCustomerCreate, flowCustomerRegister } from '../../src/lib/flowClient.js';
 import { query } from '../../src/lib/db.js';
-import { runCors } from '../../src/lib/cors.js'; // ajusta el nombre si tu cors se exporta distinto
+import { setCors, handleOptions } from '../../src/lib/cors.js';
 
-const BASE_URL = process.env.BASE_URL;           // ej: https://flow-lac-seven.vercel.app
+const BASE_URL = process.env.BASE_URL;
 const CARD_RETURN_PATH = '/api/subscriptions/card-return';
 
 export default async function handler(req, res) {
-  await runCors(req, res);
+  // CORS – igual que tus endpoints antiguos
+  if (handleOptions(req, res)) return;
+  setCors(res, req.headers.origin);
 
   if (req.method !== 'POST') {
     res.status(405).json({ ok: false, error: 'Method not allowed' });
     return;
   }
+
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;

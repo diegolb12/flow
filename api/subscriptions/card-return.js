@@ -4,20 +4,14 @@ import {
   flowSubscriptionCreate
 } from '../../src/lib/flowClient.js';
 import { query } from '../../src/lib/db.js';
-import { runCors } from '../../src/lib/cors.js';
+import { setCors, handleOptions } from '../../src/lib/cors.js';
 
-const PLAN_ID = process.env.FLOW_PLAN_ID; // SUBASECH
+const PLAN_ID = process.env.FLOW_PLAN_ID;
 const SUCCESS_REDIRECT = process.env.SUBS_SUCCESS_URL || 'https://www.asech.cl/gracias-suscripcion';
 
 export default async function handler(req, res) {
-  await runCors(req, res);
-
-  const { token } = req.method === 'GET' ? req.query : req.body;
-
-  if (!token) {
-    res.status(400).send('Falta token');
-    return;
-  }
+  if (handleOptions(req, res)) return;
+  setCors(res, req.headers.origin);
 
   try {
     const status = await flowCustomerGetRegisterStatus(token);

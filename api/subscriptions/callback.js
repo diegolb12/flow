@@ -1,16 +1,13 @@
 // api/subscriptions/callback.js
 import { signParams } from '../../src/lib/flowSign.js';
 import { query } from '../../src/lib/db.js';
-import { runCors } from '../../src/lib/cors.js';
+import { setCors, handleOptions } from '../../src/lib/cors.js';
 
-const SECRET  = process.env.FLOW_SECRET;
+const SECRET = process.env.FLOW_SECRET;
 
 export default async function handler(req, res) {
-  await runCors(req, res);
-
-  if (req.method !== 'POST') {
-    res.status(405).json({ ok: false });
-    return;
+  if (handleOptions(req, res)) return;
+  setCors(res, req.headers.origin);
   }
 
   try {
@@ -63,4 +60,3 @@ export default async function handler(req, res) {
     console.error('FLOW SUBS CALLBACK ERROR', err);
     res.status(500).json({ ok: false });
   }
-}
